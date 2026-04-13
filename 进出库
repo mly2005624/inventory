@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简易进出库管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/v4-shims.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        success: '#16a34a',
+                        warning: '#eab308',
+                        danger: '#dc2626',
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .tab-active {
+                @apply border-b-2 border-primary text-primary font-medium;
+            }
+            .form-input {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary;
+            }
+            .btn {
+                @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
+            }
+            .btn-primary {
+                @apply bg-primary text-white hover:bg-primary/90;
+            }
+            .btn-success {
+                @apply bg-success text-white hover:bg-success/90;
+            }
+            .btn-warning {
+                @apply bg-warning text-white hover:bg-warning/90;
+            }
+            .btn-danger {
+                @apply bg-danger text-white hover:bg-danger/90;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- 头部 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-gray-800 flex items-center gap-3">
+                <i class="fa fa-archive text-primary"></i>
+                简易进出库管理系统
+            </h1>
+            <p class="text-gray-500 mt-2">本地存储 | 客户管理 | 入库出库 | 库存查询</p>
+        </div>
+
+        <!-- 标签页导航 -->
+        <div class="bg-white rounded-lg shadow-md mb-6">
+            <div class="flex border-b border-gray-200">
+                <button class="tab-btn px-6 py-3 tab-active" data-tab="customer">客户管理</button>
+                <button class="tab-btn px-6 py-3" data-tab="inbound">入库管理</button>
+                <button class="tab-btn px-6 py-3" data-tab="outbound">出库管理</button>
+                <button class="tab-btn px-6 py-3" data-tab="inventory">库存查询</button>
+                <button class="tab-btn px-6 py-3" data-tab="records">记录查询</button>
+            </div>
+        </div>
+
+        <!-- 客户管理 -->
+        <div id="customer" class="tab-content bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">客户信息管理</h2>
+                <button id="addCustomerBtn" class="btn btn-primary">
+                    <i class="fa fa-plus mr-2"></i>新增客户
+                </button>
+            </div>
+
+            <!-- 客户表单 -->
+            <div id="customerForm" class="hidden bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
+                <h3 class="text-lg font-medium mb-4" id="customerFormTitle">新增客户</h3>
+                <form id="customerFormData" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <input type="hidden" id="customerId">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">客户名称 *</label>
+                        <input type="text" id="customerName" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">联系人</label>
+                        <input type="text" id="customerContact" class="form-input">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">联系电话 *</label>
+                        <input type="tel" id="customerPhone" class="form-input" required>
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">客户地址</label>
+                        <input type="text" id="customerAddress" class="form-input">
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                        <textarea id="customerRemark" class="form-input" rows="2"></textarea>
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3 flex justify-end gap-3">
+                        <button type="button" id="cancelCustomerBtn" class="btn btn-warning">取消</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 客户列表 -->
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border border-gray-300 px-4 py-2 text-left">客户编号</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">客户名称</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">联系人</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">联系电话</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerList">
+                        <tr>
+                            <td colspan="5" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无客户数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 入库管理 -->
+        <div id="inbound" class="tab-content hidden bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">入库管理</h2>
+                <button id="addInboundBtn" class="btn btn-success">
+                    <i class="fa fa-plus mr-2"></i>新增入库
+                </button>
+            </div>
+
+            <!-- 入库表单 -->
+            <div id="inboundForm" class="hidden bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
+                <h3 class="text-lg font-medium mb-4">新增入库</h3>
+                <form id="inboundFormData" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <input type="hidden" id="inboundId">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">入库单号</label>
+                        <input type="text" id="inboundNo" class="form-input" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">入库时间 *</label>
+                        <input type="datetime-local" id="inboundTime" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">客户 *</label>
+                        <select id="inboundCustomer" class="form-input" required>
+                            <option value="">请选择客户</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产品型号 *</label>
+                        <input type="text" id="inboundModel" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产品颜色 *</label>
+                        <input type="text" id="inboundColor" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产品规格 *</label>
+                        <input type="text" id="inboundSpec" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">数量 *</label>
+                        <input type="number" id="inboundQty" class="form-input" min="1" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">单价（元）</label>
+                        <input type="number" id="inboundPrice" class="form-input" min="0" step="0.01">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">总价（元）</label>
+                        <input type="number" id="inboundTotal" class="form-input" min="0" step="0.01" readonly>
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">入库人</label>
+                        <input type="text" id="inboundUser" class="form-input">
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                        <textarea id="inboundRemark" class="form-input" rows="2"></textarea>
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3 flex justify-end gap-3">
+                        <button type="button" id="cancelInboundBtn" class="btn btn-warning">取消</button>
+                        <button type="submit" class="btn btn-success">保存入库</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 入库记录列表 -->
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border border-gray-300 px-4 py-2 text-left">入库单号</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">入库时间</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">客户</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">产品信息</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">数量</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inboundList">
+                        <tr>
+                            <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无入库记录</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 出库管理 -->
+        <div id="outbound" class="tab-content hidden bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">出库管理</h2>
+                <button id="addOutboundBtn" class="btn btn-danger">
+                    <i class="fa fa-plus mr-2"></i>新增出库
+                </button>
+            </div>
+
+            <!-- 出库表单 -->
+            <div id="outboundForm" class="hidden bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
+                <h3 class="text-lg font-medium mb-4">新增出库</h3>
+                <form id="outboundFormData" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <input type="hidden" id="outboundId">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">出库单号</label>
+                        <input type="text" id="outboundNo" class="form-input" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">出库时间 *</label>
+                        <input type="datetime-local" id="outboundTime" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">客户 *</label>
+                        <select id="outboundCustomer" class="form-input" required>
+                            <option value="">请选择客户</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产品型号 *</label>
+                        <input type="text" id="outboundModel" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产品颜色 *</label>
+                        <input type="text" id="outboundColor" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产品规格 *</label>
+                        <input type="text" id="outboundSpec" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">库存数量</label>
+                        <input type="number" id="outboundStock" class="form-input" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">出库数量 *</label>
+                        <input type="number" id="outboundQty" class="form-input" min="1" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">单价（元）</label>
+                        <input type="number" id="outboundPrice" class="form-input" min="0" step="0.01">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">总价（元）</label>
+                        <input type="number" id="outboundTotal" class="form-input" min="0" step="0.01" readonly>
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">出库人</label>
+                        <input type="text" id="outboundUser" class="form-input">
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                        <textarea id="outboundRemark" class="form-input" rows="2"></textarea>
+                    </div>
+                    <div class="md:col-span-2 lg:col-span-3 flex justify-end gap-3">
+                        <button type="button" id="cancelOutboundBtn" class="btn btn-warning">取消</button>
+                        <button type="submit" class="btn btn-danger">保存出库</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 出库记录列表 -->
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border border-gray-300 px-4 py-2 text-left">出库单号</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">出库时间</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">客户</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">产品信息</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">数量</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="outboundList">
+                        <tr>
+                            <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无出库记录</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 库存查询 -->
+        <div id="inventory" class="tab-content hidden bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">当前库存</h2>
+                <button id="refreshInventoryBtn" class="btn btn-primary">
+                    <i class="fa fa-refresh mr-2"></i>刷新库存
+                </button>
+            </div>
+
+            <!-- 库存搜索 -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" id="searchModel" placeholder="产品型号" class="form-input">
+                    <input type="text" id="searchColor" placeholder="产品颜色" class="form-input">
+                    <input type="text" id="searchSpec" placeholder="产品规格" class="form-input">
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="searchInventoryBtn" class="btn btn-primary">搜索</button>
+                </div>
+            </div>
+
+            <!-- 库存列表 -->
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border border-gray-300 px-4 py-2 text-left">产品型号</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">产品颜色</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">产品规格</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">当前库存</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryList">
+                        <tr>
+                            <td colspan="4" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无库存数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 记录查询 -->
+        <div id="records" class="tab-content hidden bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">进出库记录查询</h2>
+                <div class="flex gap-3">
+                    <select id="recordType" class="form-input w-40">
+                        <option value="all">全部记录</option>
+                        <option value="inbound">入库记录</option>
+                        <option value="outbound">出库记录</option>
+                    </select>
+                    <button id="refreshRecordsBtn" class="btn btn-primary">
+                        <i class="fa fa-refresh mr-2"></i>刷新
+                    </button>
+                </div>
+            </div>
+
+            <!-- 记录搜索 -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <input type="text" id="recordNo" placeholder="单号" class="form-input">
+                    <input type="date" id="recordDate" class="form-input">
+                    <input type="text" id="recordCustomer" placeholder="客户名称" class="form-input">
+                    <input type="text" id="recordProduct" placeholder="产品型号" class="form-input">
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="searchRecordsBtn" class="btn btn-primary">搜索</button>
+                </div>
+            </div>
+
+            <!-- 记录列表 -->
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border border-gray-300 px-4 py-2 text-left">类型</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">单号</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">时间</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">客户</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">产品信息</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">数量</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsList">
+                        <tr>
+                            <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无记录数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 数据存储键名
+        const STORAGE_KEYS = {
+            customers: 'inventory_customers',
+            inbound: 'inventory_inbound',
+            outbound: 'inventory_outbound',
+            inventory: 'inventory_current'
+        };
+
+        // 初始化数据
+        let customers = JSON.parse(localStorage.getItem(STORAGE_KEYS.customers)) || [];
+        let inboundRecords = JSON.parse(localStorage.getItem(STORAGE_KEYS.inbound)) || [];
+        let outboundRecords = JSON.parse(localStorage.getItem(STORAGE_KEYS.outbound)) || [];
+        let currentInventory = JSON.parse(localStorage.getItem(STORAGE_KEYS.inventory)) || [];
+
+        // 标签页切换
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                // 切换标签样式
+                tabBtns.forEach(b => b.classList.remove('tab-active'));
+                btn.classList.add('tab-active');
+                // 切换内容
+                tabContents.forEach(c => c.classList.add('hidden'));
+                document.getElementById(tab).classList.remove('hidden');
+                
+                // 切换时刷新对应数据
+                if (tab === 'customer') renderCustomerList();
+                if (tab === 'inbound') {
+                    renderInboundList();
+                    loadCustomerOptions('inboundCustomer');
+                }
+                if (tab === 'outbound') {
+                    renderOutboundList();
+                    loadCustomerOptions('outboundCustomer');
+                }
+                if (tab === 'inventory') renderInventoryList();
+                if (tab === 'records') renderRecordsList();
+            });
+        });
+
+        // ==================== 客户管理功能 ====================
+        // 显示客户表单
+        document.getElementById('addCustomerBtn').addEventListener('click', () => {
+            document.getElementById('customerFormTitle').textContent = '新增客户';
+            document.getElementById('customerFormData').reset();
+            document.getElementById('customerId').value = '';
+            document.getElementById('customerForm').classList.remove('hidden');
+        });
+
+        // 取消客户表单
+        document.getElementById('cancelCustomerBtn').addEventListener('click', () => {
+            document.getElementById('customerForm').classList.add('hidden');
+        });
+
+        // 保存客户
+        document.getElementById('customerFormData').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const customer = {
+                id: document.getElementById('customerId').value || Date.now().toString(),
+                name: document.getElementById('customerName').value.trim(),
+                contact: document.getElementById('customerContact').value.trim(),
+                phone: document.getElementById('customerPhone').value.trim(),
+                address: document.getElementById('customerAddress').value.trim(),
+                remark: document.getElementById('customerRemark').value.trim()
+            };
+
+            if (document.getElementById('customerId').value) {
+                // 编辑
+                const index = customers.findIndex(c => c.id === customer.id);
+                customers[index] = customer;
+            } else {
+                // 新增
+                customers.push(customer);
+            }
+
+            // 保存数据
+            localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(customers));
+            document.getElementById('customerForm').classList.add('hidden');
+            renderCustomerList();
+            alert('保存成功！');
+        });
+
+        // 渲染客户列表
+        function renderCustomerList() {
+            const tbody = document.getElementById('customerList');
+            if (customers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无客户数据</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = customers.map((customer, index) => `
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2">${index + 1}</td>
+                    <td class="border border-gray-300 px-4 py-2">${customer.name}</td>
+                    <td class="border border-gray-300 px-4 py-2">${customer.contact || '-'}</td>
+                    <td class="border border-gray-300 px-4 py-2">${customer.phone}</td>
+                    <td class="border border-gray-300 px-4 py-2">
+                        <button onclick="editCustomer('${customer.id}')" class="text-primary mr-3">
+                            <i class="fa fa-edit"></i> 编辑
+                        </button>
+                        <button onclick="deleteCustomer('${customer.id}')" class="text-danger">
+                            <i class="fa fa-trash"></i> 删除
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 编辑客户
+        window.editCustomer = (id) => {
+            const customer = customers.find(c => c.id === id);
+            if (!customer) return;
+
+            document.getElementById('customerFormTitle').textContent = '编辑客户';
+            document.getElementById('customerId').value = customer.id;
+            document.getElementById('customerName').value = customer.name;
+            document.getElementById('customerContact').value = customer.contact;
+            document.getElementById('customerPhone').value = customer.phone;
+            document.getElementById('customerAddress').value = customer.address;
+            document.getElementById('customerRemark').value = customer.remark;
+            document.getElementById('customerForm').classList.remove('hidden');
+        };
+
+        // 删除客户
+        window.deleteCustomer = (id) => {
+            if (!confirm('确定删除该客户？删除后无法恢复！')) return;
+            customers = customers.filter(c => c.id !== id);
+            localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(customers));
+            renderCustomerList();
+            alert('删除成功！');
+        };
+
+        // 加载客户选项
+        function loadCustomerOptions(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">请选择客户</option>';
+            customers.forEach(customer => {
+                select.innerHTML += `<option value="${customer.id}">${customer.name}</option>`;
+            });
+        }
+
+        // ==================== 入库管理功能 ====================
+        // 显示入库表单
+        document.getElementById('addInboundBtn').addEventListener('click', () => {
+            document.getElementById('inboundFormData').reset();
+            document.getElementById('inboundId').value = '';
+            // 生成入库单号
+            const now = new Date();
+            const no = `RK${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}${now.getTime().toString().slice(-6)}`;
+            document.getElementById('inboundNo').value = no;
+            // 设置默认时间
+            document.getElementById('inboundTime').value = new Date().toISOString().slice(0, 16);
+            // 加载客户选项
+            loadCustomerOptions('inboundCustomer');
+            document.getElementById('inboundForm').classList.remove('hidden');
+        });
+
+        // 取消入库表单
+        document.getElementById('cancelInboundBtn').addEventListener('click', () => {
+            document.getElementById('inboundForm').classList.add('hidden');
+        });
+
+        // 入库单价变化计算总价
+        document.getElementById('inboundPrice').addEventListener('input', () => {
+            const price = parseFloat(document.getElementById('inboundPrice').value) || 0;
+            const qty = parseInt(document.getElementById('inboundQty').value) || 0;
+            document.getElementById('inboundTotal').value = (price * qty).toFixed(2);
+        });
+
+        document.getElementById('inboundQty').addEventListener('input', () => {
+            const price = parseFloat(document.getElementById('inboundPrice').value) || 0;
+            const qty = parseInt(document.getElementById('inboundQty').value) || 0;
+            document.getElementById('inboundTotal').value = (price * qty).toFixed(2);
+        });
+
+        // 保存入库
+        document.getElementById('inboundFormData').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const customerId = document.getElementById('inboundCustomer').value;
+            const customer = customers.find(c => c.id === customerId);
+            
+            const record = {
+                id: document.getElementById('inboundId').value || Date.now().toString(),
+                no: document.getElementById('inboundNo').value,
+                time: document.getElementById('inboundTime').value,
+                customerId: customerId,
+                customerName: customer ? customer.name : '未知客户',
+                model: document.getElementById('inboundModel').value.trim(),
+                color: document.getElementById('inboundColor').value.trim(),
+                spec: document.getElementById('inboundSpec').value.trim(),
+                qty: parseInt(document.getElementById('inboundQty').value),
+                price: parseFloat(document.getElementById('inboundPrice').value) || 0,
+                total: parseFloat(document.getElementById('inboundTotal').value) || 0,
+                user: document.getElementById('inboundUser').value.trim(),
+                remark: document.getElementById('inboundRemark').value.trim()
+            };
+
+            if (document.getElementById('inboundId').value) {
+                // 编辑（不建议编辑入库，会影响库存，这里仅保留功能）
+                const index = inboundRecords.findIndex(r => r.id === record.id);
+                inboundRecords[index] = record;
+            } else {
+                // 新增
+                inboundRecords.push(record);
+                // 更新库存
+                updateInventory(record.model, record.color, record.spec, record.qty, 'in');
+            }
+
+            // 保存数据
+            localStorage.setItem(STORAGE_KEYS.inbound, JSON.stringify(inboundRecords));
+            localStorage.setItem(STORAGE_KEYS.inventory, JSON.stringify(currentInventory));
+            document.getElementById('inboundForm').classList.add('hidden');
+            renderInboundList();
+            renderInventoryList();
+            alert('入库成功！');
+        });
+
+        // 渲染入库列表
+        function renderInboundList() {
+            const tbody = document.getElementById('inboundList');
+            if (inboundRecords.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无入库记录</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = inboundRecords.map(record => `
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2">${record.no}</td>
+                    <td class="border border-gray-300 px-4 py-2">${formatDateTime(record.time)}</td>
+                    <td class="border border-gray-300 px-4 py-2">${record.customerName}</td>
+                    <td class="border border-gray-300 px-4 py-2">${record.model} / ${record.color} / ${record.spec}</td>
+                    <td class="border border-gray-300 px-4 py-2">${record.qty}</td>
+                    <td class="border border-gray-300 px-4 py-2">
+                        <button onclick="viewInbound('${record.id}')" class="text-primary mr-3">
+                            <i class="fa fa-eye"></i> 查看
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 查看入库详情
+        window.viewInbound = (id) => {
+            const record = inboundRecords.find(r => r.id === id);
+            if (!record) return;
+            alert(`
+入库单号：${record.no}
+入库时间：${formatDateTime(record.time)}
+客户：${record.customerName}
+产品型号：${record.model}
+产品颜色：${record.color}
+产品规格：${record.spec}
+数量：${record.qty}
+单价：${record.price}元
+总价：${record.total}元
+入库人：${record.user || '-'}
+备注：${record.remark || '-'}
+            `);
+        };
+
+        // ==================== 出库管理功能 ====================
+        // 显示出库表单
+        document.getElementById('addOutboundBtn').addEventListener('click', () => {
+            document.getElementById('outboundFormData').reset();
+            document.getElementById('outboundId').value = '';
+            // 生成出库单号
+            const now = new Date();
+            const no = `CK${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}${now.getTime().toString().slice(-6)}`;
+            document.getElementById('outboundNo').value = no;
+            // 设置默认时间
+            document.getElementById('outboundTime').value = new Date().toISOString().slice(0, 16);
+            // 加载客户选项
+            loadCustomerOptions('outboundCustomer');
+            document.getElementById('outboundForm').classList.remove('hidden');
+        });
+
+        // 取消出库表单
+        document.getElementById('cancelOutboundBtn').addEventListener('click', () => {
+            document.getElementById('outboundForm').classList.add('hidden');
+        });
+
+        // 出库产品信息变化查询库存
+        const checkOutboundStock = () => {
+            const model = document.getElementById('outboundModel').value.trim();
+            const color = document.getElementById('outboundColor').value.trim();
+            const spec = document.getElementById('outboundSpec').value.trim();
+            
+            if (model && color && spec) {
+                const stock = currentInventory.find(item => 
+                    item.model === model && item.color === color && item.spec === spec
+                );
+                document.getElementById('outboundStock').value = stock ? stock.qty : 0;
+            } else {
+                document.getElementById('outboundStock').value = 0;
+            }
+        };
+
+        document.getElementById('outboundModel').addEventListener('input', checkOutboundStock);
+        document.getElementById('outboundColor').addEventListener('input', checkOutboundStock);
+        document.getElementById('outboundSpec').addEventListener('input', checkOutboundStock);
+
+        // 出库单价变化计算总价
+        document.getElementById('outboundPrice').addEventListener('input', () => {
+            const price = parseFloat(document.getElementById('outboundPrice').value) || 0;
+            const qty = parseInt(document.getElementById('outboundQty').value) || 0;
+            document.getElementById('outboundTotal').value = (price * qty).toFixed(2);
+        });
+
+        document.getElementById('outboundQty').addEventListener('input', () => {
+            const price = parseFloat(document.getElementById('outboundPrice').value) || 0;
+            const qty = parseInt(document.getElementById('outboundQty').value) || 0;
+            document.getElementById('outboundTotal').value = (price * qty).toFixed(2);
+        });
+
+        // 保存出库
+        document.getElementById('outboundFormData').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const customerId = document.getElementById('outboundCustomer').value;
+            const customer = customers.find(c => c.id === customerId);
+            const qty = parseInt(document.getElementById('outboundQty').value);
+            const stock = parseInt(document.getElementById('outboundStock').value);
+
+            // 库存检查
+            if (qty > stock) {
+                alert('出库数量不能大于当前库存！');
+                return;
+            }
+
+            const record = {
+                id: document.getElementById('outboundId').value || Date.now().toString(),
+                no: document.getElementById('outboundNo').value,
+                time: document.getElementById('outboundTime').value,
+                customerId: customerId,
+                customerName: customer ? customer.name : '未知客户',
+                model: document.getElementById('outboundModel').value.trim(),
+                color: document.getElementById('outboundColor').value.trim(),
+                spec: document.getElementById('outboundSpec').value.trim(),
+                qty: qty,
+                price: parseFloat(document.getElementById('outboundPrice').value) || 0,
+                total: parseFloat(document.getElementById('outboundTotal').value) || 0,
+                user: document.getElementById('outboundUser').value.trim(),
+                remark: document.getElementById('outboundRemark').value.trim()
+            };
+
+            if (document.getElementById('outboundId').value) {
+                // 编辑（不建议编辑出库，会影响库存，这里仅保留功能）
+                const index = outboundRecords.findIndex(r => r.id === record.id);
+                outboundRecords[index] = record;
+            } else {
+                // 新增
+                outboundRecords.push(record);
+                // 更新库存
+                updateInventory(record.model, record.color, record.spec, record.qty, 'out');
+            }
+
+            // 保存数据
+            localStorage.setItem(STORAGE_KEYS.outbound, JSON.stringify(outboundRecords));
+            localStorage.setItem(STORAGE_KEYS.inventory, JSON.stringify(currentInventory));
+            document.getElementById('outboundForm').classList.add('hidden');
+            renderOutboundList();
+            renderInventoryList();
+            alert('出库成功！');
+        });
+
+        // 渲染出库列表
+        function renderOutboundList() {
+            const tbody = document.getElementById('outboundList');
+            if (outboundRecords.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无出库记录</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = outboundRecords.map(record => `
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2">${record.no}</td>
+                    <td class="border border-gray-300 px-4 py-2">${formatDateTime(record.time)}</td>
+                    <td class="border border-gray-300 px-4 py-2">${record.customerName}</td>
+                    <td class="border border-gray-300 px-4 py-2">${record.model} / ${record.color} / ${record.spec}</td>
+                    <td class="border border-gray-300 px-4 py-2">${record.qty}</td>
+                    <td class="border border-gray-300 px-4 py-2">
+                        <button onclick="viewOutbound('${record.id}')" class="text-primary mr-3">
+                            <i class="fa fa-eye"></i> 查看
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 查看出库详情
+        window.viewOutbound = (id) => {
+            const record = outboundRecords.find(r => r.id === id);
+            if (!record) return;
+            alert(`
+出库单号：${record.no}
+出库时间：${formatDateTime(record.time)}
+客户：${record.customerName}
+产品型号：${record.model}
+产品颜色：${record.color}
+产品规格：${record.spec}
+数量：${record.qty}
+单价：${record.price}元
+总价：${record.total}元
+出库人：${record.user || '-'}
+备注：${record.remark || '-'}
+            `);
+        };
+
+        // ==================== 库存管理功能 ====================
+        // 更新库存
+        function updateInventory(model, color, spec, qty, type) {
+            const index = currentInventory.findIndex(item => 
+                item.model === model && item.color === color && item.spec === spec
+            );
+
+            if (index !== -1) {
+                // 已有库存
+                if (type === 'in') {
+                    currentInventory[index].qty += qty;
+                } else {
+                    currentInventory[index].qty -= qty;
+                    // 库存为0时可保留或删除，这里保留
+                }
+            } else if (type === 'in') {
+                // 新增库存
+                currentInventory.push({
+                    model: model,
+                    color: color,
+                    spec: spec,
+                    qty: qty
+                });
+            }
+        }
+
+        // 渲染库存列表
+        function renderInventoryList() {
+            const tbody = document.getElementById('inventoryList');
+            const searchModel = document.getElementById('searchModel').value.trim().toLowerCase();
+            const searchColor = document.getElementById('searchColor').value.trim().toLowerCase();
+            const searchSpec = document.getElementById('searchSpec').value.trim().toLowerCase();
+
+            let filteredInventory = currentInventory.filter(item => {
+                return (
+                    item.model.toLowerCase().includes(searchModel) &&
+                    item.color.toLowerCase().includes(searchColor) &&
+                    item.spec.toLowerCase().includes(searchSpec)
+                );
+            });
+
+            if (filteredInventory.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无库存数据</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredInventory.map(item => `
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2">${item.model}</td>
+                    <td class="border border-gray-300 px-4 py-2">${item.color}</td>
+                    <td class="border border-gray-300 px-4 py-2">${item.spec}</td>
+                    <td class="border border-gray-300 px-4 py-2 font-medium ${item.qty <= 0 ? 'text-danger' : 'text-success'}">${item.qty}</td>
+                </tr>
+            `).join('');
+        }
+
+        // 库存搜索
+        document.getElementById('searchInventoryBtn').addEventListener('click', renderInventoryList);
+        document.getElementById('refreshInventoryBtn').addEventListener('click', () => {
+            document.getElementById('searchModel').value = '';
+            document.getElementById('searchColor').value = '';
+            document.getElementById('searchSpec').value = '';
+            renderInventoryList();
+        });
+
+        // ==================== 记录查询功能 ====================
+        // 渲染记录列表
+        function renderRecordsList() {
+            const tbody = document.getElementById('recordsList');
+            const recordType = document.getElementById('recordType').value;
+            const recordNo = document.getElementById('recordNo').value.trim();
+            const recordDate = document.getElementById('recordDate').value;
+            const recordCustomer = document.getElementById('recordCustomer').value.trim().toLowerCase();
+            const recordProduct = document.getElementById('recordProduct').value.trim().toLowerCase();
+
+            let records = [];
+            if (recordType === 'all' || recordType === 'inbound') {
+                records = [...records, ...inboundRecords.map(r => ({...r, type: 'in'}))];
+            }
+            if (recordType === 'all' || recordType === 'outbound') {
+                records = [...records, ...outboundRecords.map(r => ({...r, type: 'out'}))];
+            }
+
+            // 筛选
+            records = records.filter(record => {
+                const matchNo = !recordNo || record.no.includes(recordNo);
+                const matchDate = !recordDate || record.time.startsWith(recordDate);
+                const matchCustomer = !recordCustomer || record.customerName.toLowerCase().includes(recordCustomer);
+                const matchProduct = !recordProduct || record.model.toLowerCase().includes(recordProduct);
+                return matchNo && matchDate && matchCustomer && matchProduct;
+            });
+
+            // 按时间倒序
+            records.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">暂无记录数据</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = records.map(record => `
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2">
+                        <span class="px-2 py-1 rounded text-xs ${record.type === 'in' ? 'bg-success text-white' : 'bg-danger text-white'}">
+                            ${record.type === 'in' ? '入库' : '出库'}
+                        </span>
+                    </td>
+                    <td class="border border-gray-300 px-4 py-2">${record.no}</td>
+                    <td class="border border-gray-300 px-4 py-2">${formatDateTime(record.time)}</td>
+                    <td class="border border-gray-300 px-4 py-2">${record.customerName}</td>
+                    <td class="border border-gray-300 px-4 py-2">${record.model} / ${record.color} / ${record.spec}</td>
+                    <td class="border border-gray-300 px-4 py-2 ${record.type === 'in' ? 'text-success' : 'text-danger'}">
+                        ${record.type === 'in' ? '+' : '-' }${record.qty}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 记录搜索
+        document.getElementById('searchRecordsBtn').addEventListener('click', renderRecordsList);
+        document.getElementById('refreshRecordsBtn').addEventListener('click', () => {
+            document.getElementById('recordNo').value = '';
+            document.getElementById('recordDate').value = '';
+            document.getElementById('recordCustomer').value = '';
+            document.getElementById('recordProduct').value = '';
+            renderRecordsList();
+        });
+
+        // 记录类型切换
+        document.getElementById('recordType').addEventListener('change', renderRecordsList);
+
+        // ==================== 工具函数 ====================
+        // 格式化时间
+        function formatDateTime(datetime) {
+            if (!datetime) return '-';
+            const date = new Date(datetime);
+            return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+        }
+
+        // 初始化页面
+        window.addEventListener('DOMContentLoaded', () => {
+            renderCustomerList();
+            renderInboundList();
+            renderOutboundList();
+            renderInventoryList();
+            renderRecordsList();
+        });
+    </script>
+</body>
+</html>
